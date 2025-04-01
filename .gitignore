@@ -50,3 +50,41 @@ modules.order
 Module.symvers
 Mkfile.old
 dkms.conf
+
+**/metadata/*
+
+**/Release/
+**/Debug/
+Release/*
+Debug/*
+
+language.settings.xml
+stm32cubeide.project.prefs
+.metadata/.plugins/org.eclipse.ui.ide/dialog_settings.xml
+/.metadata/
+
+# Ignore all bin files
+*.bin
+
+# Ignore files related to API keys
+*.elf
+
+# Ignore files related to API keys
+*.list
+
+# Ignore all map files
+*.map
+
+# Ignore all object.list files
+!objects.list
+
+# Ignore all d files
+*.d
+
+# Ignore all object files
+*.o
+
+# Ignore all su files
+*.su
+
+
