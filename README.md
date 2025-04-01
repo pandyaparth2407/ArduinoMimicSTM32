@@ -108,11 +108,11 @@ uint32_t start = micros();
 uint32_t elapsed = micros() - start;  
 
 // Send data through UART1  
-UART1_printf(&huart1,"Elapsed time: %lu microseconds\r\n", elapsed);  
+SerialPrintf(&huart1,"Elapsed time: %lu microseconds\r\n", elapsed);  
 if(hUsbDeviceFS.dev_state == USBD_STATE_CONFIGURED) USBSerialPrintf("Elapsed time: %lu microseconds\r\n", elapsed);  
 // Process in main loop  
 while(1) {  
-  UART1_printf(&huart1,"Time: %lu ms\r\n", millis());  
+  SerialPrintf(&huart1,"Time: %lu ms\r\n", millis());  
   if(hUsbDeviceFS.dev_state == USBD_STATE_CONFIGURED)  
   {  
     USBSerialPrintf("Time: %lu ms\r\n", millis());  
