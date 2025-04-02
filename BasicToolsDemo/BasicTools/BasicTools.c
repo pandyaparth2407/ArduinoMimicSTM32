@@ -199,6 +199,12 @@ void SerialPrintf(UART_HandleTypeDef *huart, const char* fmt, ...) {
 
 /**
   * @brief  Handle UART TX DMA complete interrupt
+  * @note   This function handles both normal and circular DMA modes with optimized buffer management.
+  *         It automatically detects the DMA mode and applies the appropriate strategy.
+  *         For circular DMA: Optimizes by updating buffer sections when possible
+  *         For normal DMA: Always restarts transfers as required by the hardware
+  * @param  huart: UART handle containing DMA information
+  * @retval None
   */
 void Handle_Uart_TX_DMA_Complete(UART_HandleTypeDef *huart) {
     UART_Context *ctx = GetUartContext(huart);
@@ -209,34 +215,72 @@ void Handle_Uart_TX_DMA_Complete(UART_HandleTypeDef *huart) {
 
     /* If nothing more to send, just abort and exit */
     if (remainingBytes == 0) {
-        HAL_UART_AbortTransmit_IT(huart);
+        /* Only abort for circular mode, not needed for normal mode */
+        if (huart->hdmatx->Init.Mode == DMA_CIRCULAR) {
+            HAL_UART_AbortTransmit_IT(huart);
+        }
+        ctx->dma_half_complete = 0;
+        return;
+    }
+
+    /* For normal DMA mode, immediately initiate next dma trasnfer, then exit */
+    if (huart->hdmatx->Init.Mode != DMA_CIRCULAR)
+    {  // Normal DMA mode (always takes this path)
+        /* Determine optimal transfer size */
+        uint16_t transferSize = (remainingBytes < ctx->tx_dma_size) ? remainingBytes : ctx->tx_dma_size;
+
+        /* Fill buffer with new data and start transmission */
+		CircBufToMemcpy(ctx->tx_buf, ctx->data_buffer, &ctx->tx_tail,
+					   transferSize, ctx->tx_buffer_size);
+		HAL_UART_Transmit_DMA(huart, (uint8_t *)ctx->tx_buf, transferSize);
+
+        /* Reset the half-complete flag */
         ctx->dma_half_complete = 0;
         return;
     }
 
     /* Decide on the next transfer approach */
-    if (huart->TxXferSize == ctx->tx_dma_size &&
-        ctx->dma_half_complete &&
-        remainingBytes > (ctx->tx_dma_size >> 1)) {
-        /* Case 1: Current transfer is full-sized, half-complete flag is set,
-           and we have enough data to continue - so just fill the second half of buffer */
+    /* Condition : We have more data than a full DMA buffer AND previous transfer was full-sized
+       This allows continuous streaming by just updating the second half of the buffer
+       while the first half is still being transmitted by DMA hardware.
+       No half-complete flag needed for this. */
+    if (remainingBytes > ctx->tx_dma_size && huart->TxXferSize == ctx->tx_dma_size)
+    {
         CircBufToMemcpy(ctx->tx_buf + (ctx->tx_dma_size >> 1),
                        ctx->data_buffer, &ctx->tx_tail,
                        ctx->tx_dma_size >> 1, ctx->tx_buffer_size);
-    } else {
-        /* Case 2: For all other scenarios, abort current transfer and start a new one */
+    }
+    /* Condition : Medium-sized data transfer with half-complete interrupt processed
+       We have between half and full buffer of data remaining AND the half-complete interrupt
+       has been handled (first half already updated). Just need to update the second half of
+       the buffer to complete this transfer. */
+    else if (remainingBytes > (ctx->tx_dma_size >> 1) && remainingBytes <= ctx->tx_dma_size &&  ctx->dma_half_complete) {
+        CircBufToMemcpy(ctx->tx_buf + (ctx->tx_dma_size >> 1),
+                       ctx->data_buffer, &ctx->tx_tail,
+                       ctx->tx_dma_size >> 1, ctx->tx_buffer_size);
+    }
+    /* Condition 1: More data than buffer size but previous transfer wasn't full-sized
+       Condition 2: Medium-sized data (0.5-1× buffer) but half-complete flag not set
+       Condition 3: Small amount of data (less than half buffer) remaining
+       In all these cases, we need to abort current transfer and start a new one */
+    else
+    {
         HAL_UART_AbortTransmit_IT(huart);
 
-        /* Choose an appropriate transfer size for the new transfer */
+        /* Determine optimal transfer size:
+           - For large amounts of data, use full buffer size
+           - For smaller amounts, just transfer what's left */
         uint16_t transferSize = (remainingBytes < ctx->tx_dma_size) ?
                                remainingBytes : ctx->tx_dma_size;
 
-        /* Fill buffer and start new transfer */
+        /* Fill buffer with new data and start transmission */
         CircBufToMemcpy(ctx->tx_buf, ctx->data_buffer, &ctx->tx_tail,
                        transferSize, ctx->tx_buffer_size);
         HAL_UART_Transmit_DMA(huart, (uint8_t *)ctx->tx_buf, transferSize);
     }
 
+    /* Reset the half-complete flag for next transfer cycle
+       This ensures proper tracking for the next set of transfers */
     ctx->dma_half_complete = 0;
 }
 
@@ -249,6 +293,7 @@ void Handle_Uart_TX_DMA_HalfComplete(UART_HandleTypeDef *huart) {
 
     /* Only process for full DMA transfers */
     if (huart->TxXferSize < ctx->tx_dma_size) return;
+    if (huart->hdmatx->Init.Mode != DMA_CIRCULAR) return;
 
     /* If we have more data to send than the DMA buffer size, update first half */
     if (CircBufRemainingByte(&ctx->tx_head, &ctx->tx_tail, ctx->tx_buffer_size) > ctx->tx_dma_size) {

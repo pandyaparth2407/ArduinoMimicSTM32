@@ -4,7 +4,7 @@ A lightweight, Arduino-inspired utility library for STM32 microcontrollers with 
 
 ## Description  
 
-This repository demonstrates a production-ready implementation of BasicTools, an embedded utility library that bridges the gap between Arduino simplicity and professional embedded development. The code showcases a robust approach to common microcontroller tasks with optimized performance and low overhead.  
+This repository demonstrates a production-ready implementation of BasicTools for STM32F103 MCU (typical bluepill board, but can be ported to other mcu without much modification), an embedded utility library that bridges the gap between Arduino simplicity and professional embedded development. The code showcases a robust approach to common microcontroller tasks with optimized performance and low overhead. The example config file shows TX_Buffer_SIZE = 1024, RX_DMA_SIZE = 1024 and TX_DMA_SIZE = 32, showing a logics how 1024 byte being sequential parse into smaller dma tx buffer. Which can be helpful for other developers to reduce dma size for whatever reason.
 
 ## Key Features  
 
@@ -12,7 +12,7 @@ This repository demonstrates a production-ready implementation of BasicTools, an
 - **Dual-protocol communication** - Seamless data exchange between USB CDC and UART interfaces with consistent API  
 - **Intelligent buffer management** - Implements receive timeout detection for complete message handling  
 - **HAL integration** - Works alongside STM32 HAL without modification while extending functionality  
-- **DMA-accelerated transfers** - Leverages hardware DMA for efficient data movement with proper state management  
+- **Flexible DMA handling** - Optimized for both normal and circular DMA modes with efficient buffer management  
 
 ## Implementation Notes  
 
@@ -43,11 +43,11 @@ The following interrupts **must** be enabled in your project:
 
 ### DMA Configuration  
 
-Configure the following DMA channels in circular mode:   
-- DMA1_Channel4 (UART1 TX) - Memory increment, circular mode, 8-bit size  
-- DMA1_Channel5 (UART1 RX) - Memory increment, circular mode, 8-bit size 
+Configure DMA channels as follows:
+- DMA1_Channel4 (UART1 TX) - Memory increment, 8-bit size, either normal or circular mode (both supported)   
+- DMA1_Channel5 (UART1 RX) - Memory increment, circular mode, 8-bit size  
 - DMA1_Channel6 (UART2 RX) - Memory increment, circular mode, 8-bit size  
-- DMA1_Channel7 (UART2 TX) - Memory increment, circular mode, 8-bit size  
+- DMA1_Channel7 (UART2 TX) - Memory increment, 8-bit size, either normal or circular mode (both supported)
 
 ### Critical Settings  
 
@@ -119,3 +119,4 @@ while(1) {
   }  
   HAL_Delay(100);  
 }  
+```
