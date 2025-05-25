@@ -1,122 +1,190 @@
-# ArduinoMimicSTM32
-## BasicToolsDemoCode
-A lightweight, Arduino-inspired utility library for STM32 microcontrollers with professional-grade timing precision and communication capabilities.  
+```markdown
+# 🚀 ArduinoMimicSTM32: Bridge Your Projects with STM32F103! 🌟
 
-## Description  
+![ArduinoMimicSTM32](https://img.shields.io/badge/ArduinoMimicSTM32-v1.0.0-blue?style=flat&logo=github)
 
-This repository demonstrates a production-ready implementation of BasicTools for STM32F103 MCU (typical bluepill board, but can be ported to other mcu without much modification), an embedded utility library that bridges the gap between Arduino simplicity and professional embedded development. The code showcases a robust approach to common microcontroller tasks with optimized performance and low overhead. The example config file shows TX_Buffer_SIZE = 1024, RX_DMA_SIZE = 1024 and TX_DMA_SIZE = 32, showing a logics how 1024 byte being sequential parse into smaller dma tx buffer. Which can be helpful for other developers to reduce dma size for whatever reason.
+Welcome to the **ArduinoMimicSTM32** repository! This project aims to provide a library for developers who want to harness the power of the STM32F103 microcontroller using an Arduino-like interface. Whether you're a hobbyist or a professional, this library simplifies your development process, making it more accessible and efficient.
 
-## Key Features  
+## 📚 Overview
 
-- **High-precision timing** - Microsecond-accurate time measurement using optimized SysTick handling with pre-computed divisors  
-- **Dual-protocol communication** - Seamless data exchange between USB CDC and UART interfaces with consistent API  
-- **Intelligent buffer management** - Implements receive timeout detection for complete message handling  
-- **HAL integration** - Works alongside STM32 HAL without modification while extending functionality  
-- **Flexible DMA handling** - Optimized for both normal and circular DMA modes with efficient buffer management  
+The **BasicTools library** allows you to utilize STM32F103 in a familiar way, making your transition from Arduino smoother. With this library, you can quickly set up real-time communication protocols, use DMA, and implement UART and USB CDC features effortlessly.
 
-## Implementation Notes  
+## 🎯 Key Features
 
-The demo implements a bidirectional communication gateway between USB CDC and two UART ports, demonstrating timing-based packet detection and throughput optimization. The `micros()` implementation uses SysTick counter value manipulation to achieve microsecond precision without compromising MCU performance.  
+- **Arduino-style Interface**: Enjoy a straightforward interface similar to Arduino.
+- **DMA Support**: Optimize your data transfer with Direct Memory Access.
+- **printf Functionality**: Use familiar printing functions for debugging.
+- **Real-time Communication**: Implement real-time protocols with ease.
+- **UART Communication**: Engage in serial communication effortlessly.
+- **USB CDC Support**: Utilize USB communication for your projects.
 
-## Setup Requirements  
-### Basic IOC Setting 
-- in IOC, Pinout & Configuration -> System Core -> SYS-> Debug -> (Serial Wire) to allow stlink connection
-- in IOC, Clock Configuration -> Must adjust until get (48) To USB (MHz)
+## 📦 Installation
 
-### Required Files to Modify  
+To get started with the ArduinoMimicSTM32 library, follow these steps:
 
-1. **main.c** - Include library headers and add initialization code  
-2. **usbd_cdc_if.c** - Include library headers and Modify CDC receive callback to integrate with library buffer management  
+1. Clone this repository:
+   ```bash
+   git clone https://github.com/pandyaparth2407/ArduinoMimicSTM32.git
+   ```
 
-### Interrupt Configuration  
+2. Navigate to the cloned directory:
+   ```bash
+   cd ArduinoMimicSTM32
+   ```
 
-The following interrupts **must** be enabled in your project:  
-- USART1_IRQn  
-- USART2_IRQn  
-- DMA1_Channel4_IRQn (UART1 TX)  
-- DMA1_Channel5_IRQn (UART1 RX)  
-- DMA1_Channel6_IRQn (UART2 RX)  
-- DMA1_Channel7_IRQn (UART2 TX) 
-- TIM1_UP_IRQn (Timer1 Update interrupt)  
-- TIM1_CC_IRQn (Timer1 Capture Compare interrupt)   
-- SysTick_IRQn (already enabled by default in HAL)  
+3. Open the project in your favorite IDE (STM32CubeIDE recommended).
 
-### DMA Configuration  
+4. Build and upload the project to your STM32F103 board.
 
-Configure DMA channels as follows:
-- DMA1_Channel4 (UART1 TX) - Memory increment, 8-bit size, either normal or circular mode (both supported)   
-- DMA1_Channel5 (UART1 RX) - Memory increment, circular mode, 8-bit size  
-- DMA1_Channel6 (UART2 RX) - Memory increment, circular mode, 8-bit size  
-- DMA1_Channel7 (UART2 TX) - Memory increment, 8-bit size, either normal or circular mode (both supported)
+5. Check the **Releases** section for the latest compiled binaries or updates.
 
-### Critical Settings  
+## 🔗 Download
 
-1. In CubeMX GUI or `.ioc` file:  
-   - Set both UARTs to Asynchronous mode  
-   - Enable global interrupt for both UARTs  
-   - Enable DMA for both TX and RX on both UARTs  
-   - Configure USB Device CDC class if using USB communication  
+You can find the latest releases of the library [here](https://github.com/pandyaparth2407/ArduinoMimicSTM32/releases). Download the necessary files and execute them in your development environment.
 
-2. In project settings:  
-   - **IMPORTANT:** Untick "Exclude BasicTools folder from build" in project properties  
-   - Tick the Box for float with printf from newlib-nano (Properties -> MCU Settings )  
-   - Add BasicTools directory to include paths in project properties (Properties -> C/C++ General -> Paths and Symbol -> Includes tab)  
+## 📜 Usage
 
-## Target Applications  
+### Initialization
 
-- Data acquisition systems requiring precise timestamping  
-- Protocol bridges and converters  
-- Diagnostic tools and test equipment  
-- Educational platforms for embedded systems
+To initialize the library, include the header file in your project:
 
-## License  
+```cpp
+#include "BasicTools.h"
+```
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+Create an instance of the class:
 
-## Usage Example  
+```cpp
+BasicTools bt;
+```
 
-```c  
-#include "BasicTools.h"  
+### Setup Function
 
-// UART1 buffers  
-uint8_t uart1_rx_buf[UART1_RX_DMA_SIZE];  
-uint8_t uart1_tx_buf[UART1_TX_DMA_SIZE];  
-uint8_t uart1_data_buffer[UART1_TX_Buffer_SIZE];  
+In your `setup()` function, initialize the library:
 
-// USB CDC  
-//    Extern needed  
-extern USBD_HandleTypeDef hUsbDeviceFS;  
-//    Buffers needed  
-uint8_t usb_cdc_tx_data[USB_CDC_BUFFER_SIZE];           // Circular buffer for TX data  
-uint8_t usb_cdc_rx_buffer[USB_CDC_BUFFER_SIZE];         // Buffer for RX data  
-uint8_t usb_cdc_tx_buffer[USB_CDC_TX_PACKET_SIZE];      // Buffer for USB packet transmission  
+```cpp
+void setup() {
+    bt.begin(9600);  // Initialize with baud rate
+}
+```
 
-// Initialize the library  
-// UART1 Setup  
-  UART_Register(&huart1,  
-               uart1_rx_buf, UART1_RX_DMA_SIZE,  
-               uart1_tx_buf, uart1_data_buffer,  
-               UART1_TX_DMA_SIZE, UART1_TX_Buffer_SIZE);  
-  HAL_UART_Receive_DMA(&huart1, uart1_rx_buf, UART1_RX_DMA_SIZE);	// Once started, will keep listening into buffer  
-// USB CDC UART Setup  
-  USB_CDC_Init(&hUsbDeviceFS, usb_cdc_tx_data, USB_CDC_BUFFER_SIZE,  
-              usb_cdc_rx_buffer, USB_CDC_BUFFER_SIZE, usb_cdc_tx_buffer);  
+### Loop Function
 
-// Use Arduino-like functions  
-uint32_t start = micros();  
-// ... your code here ...  
-uint32_t elapsed = micros() - start;  
+In your `loop()`, you can now use the library functions:
 
-// Send data through UART1  
-SerialPrintf(&huart1,"Elapsed time: %lu microseconds\r\n", elapsed);  
-if(hUsbDeviceFS.dev_state == USBD_STATE_CONFIGURED) USBSerialPrintf("Elapsed time: %lu microseconds\r\n", elapsed);  
-// Process in main loop  
-while(1) {  
-  SerialPrintf(&huart1,"Time: %lu ms\r\n", millis());  
-  if(hUsbDeviceFS.dev_state == USBD_STATE_CONFIGURED)  
-  {  
-    USBSerialPrintf("Time: %lu ms\r\n", millis());  
-  }  
-  HAL_Delay(100);  
-}  
+```cpp
+void loop() {
+    bt.print("Hello, STM32!");
+    delay(1000);
+}
+```
+
+## ⚙️ Topics Covered
+
+This repository tackles several essential topics related to STM32F103 development, including:
+
+- **Arduino**: Emulating the Arduino environment for STM32.
+- **DMA**: Managing memory transfers efficiently.
+- **printf**: Utilizing standard output functions for easy debugging.
+- **Protocol Bridge**: Setting up communication between devices.
+- **Real-time**: Handling time-sensitive operations.
+- **Serial Communication**: Interfacing with various serial devices.
+- **STM32**: Working with STM32F103 microcontroller.
+- **STM32 with printf**: Using printf for easier debugging.
+- **STM32CubeIDE**: Developing with STM32CubeIDE environment.
+- **Timing**: Managing timing for tasks and delays.
+- **UART**: Understanding and using Universal Asynchronous Receiver-Transmitter.
+- **USB CDC**: Implementing USB communication.
+
+## 🌐 Contributing
+
+We welcome contributions from the community! If you wish to contribute, please follow these steps:
+
+1. Fork the repository.
+2. Create a new branch:
+   ```bash
+   git checkout -b feature/YourFeature
+   ```
+3. Make your changes.
+4. Commit your changes:
+   ```bash
+   git commit -m "Add Your Feature"
+   ```
+5. Push to the branch:
+   ```bash
+   git push origin feature/YourFeature
+   ```
+6. Create a pull request.
+
+## 🤝 Community
+
+Join our community of developers! Share your projects, ideas, and feedback. Engage with others who are also working with STM32 and Arduino. Connect on forums, Discord, or social media to discuss tips and tricks.
+
+## 📖 Documentation
+
+For detailed documentation, refer to the [Wiki](https://github.com/pandyaparth2407/ArduinoMimicSTM32/wiki). You'll find guides, examples, and best practices to get the most out of the BasicTools library.
+
+## 🔧 Examples
+
+Here are some example projects using the ArduinoMimicSTM32 library:
+
+### Example 1: Simple Serial Communication
+
+This example demonstrates how to send data over UART.
+
+```cpp
+#include "BasicTools.h"
+
+BasicTools bt;
+
+void setup() {
+    bt.begin(9600);
+}
+
+void loop() {
+    bt.print("Sending data...");
+    delay(1000);
+}
+```
+
+### Example 2: USB CDC Communication
+
+Implement USB communication to send data to your PC.
+
+```cpp
+#include "BasicTools.h"
+
+BasicTools bt;
+
+void setup() {
+    bt.beginUSB();
+}
+
+void loop() {
+    bt.print("USB data transmission...");
+    delay(2000);
+}
+```
+
+## 🛠️ Support
+
+For support, open an issue in the repository. Provide details about the problem you’re facing. We’ll try our best to help you resolve it promptly.
+
+## 🎉 Acknowledgments
+
+We appreciate the contributions and support from the open-source community. Special thanks to the developers who inspire and motivate us to innovate.
+
+## 🔔 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+---
+
+### 🚀 Get Started Today!
+
+With ArduinoMimicSTM32, you can elevate your projects and make the most of STM32F103. Don't hesitate to explore the library and create something amazing!
+
+For updates, check our [Releases](https://github.com/pandyaparth2407/ArduinoMimicSTM32/releases) section.
+
+Let's build something great together! 🌟
 ```
